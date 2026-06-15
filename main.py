@@ -49,7 +49,7 @@ def run_automated_shorts_pipeline(topic: str):
 
         print("\n📥 [Bước 3/4] Đang kích hoạt Bot lên Pexels săn tìm chuỗi video B-roll chuyển cảnh...")
         downloaded_videos = []
-        for kw in keywords[:4]:
+        for kw in keywords[:6]:
             print(f"   🔍 Tìm video cho cảnh: '{kw}'")
             vp = download_video_from_keyword(keyword=kw, output_dir=working_dir)
             if vp and vp not in downloaded_videos:
