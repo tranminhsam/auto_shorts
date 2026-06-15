@@ -1,0 +1,8 @@
+1
+00:00:00,050 --> 00:00:05,035
+Did you know that our Earth is spinning at a speed of over one thousand kilometers per hour?
+
+2
+00:00:05,035 --> 00:00:07,130
+That's absolutely mind-blowing!
+
