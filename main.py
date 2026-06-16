@@ -3,6 +3,7 @@ import uuid
 import shutil
 from dotenv import load_dotenv
 
+# Giữ nguyên toàn bộ cấu trúc import gốc của bạn
 from modules.script_gen import generate_script
 from modules.tts_engine import create_tts_and_subtitles
 from modules.downloader import download_video_from_keyword
@@ -14,87 +15,83 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 load_dotenv()
 
 def run_automated_shorts_pipeline(topic: str):
-    video_id = str(uuid.uuid4())[:8]
-    working_dir = os.path.join("workspace", f"video_{video_id}")
+    working_dir = os.path.abspath(f"workspace/video_{os.urandom(4).hex()}")
     os.makedirs(working_dir, exist_ok=True)
+    
+    # [BƯỚC 1/4] KỊCH BẢN TỪNG CẢNH
+    print(f"\n🧠 [Bước 1/4] Đang vắt óc suy nghĩ kịch bản và phân cảnh cho chủ đề: {topic}")
+    script_data = generate_script(topic)
+    
+    if not script_data or "scenes" not in script_data:
+        print("❌ Lỗi: Không thể khởi tạo kịch bản phân cảnh từ AI.")
+        return None
+
+    # Lắp ráp lại toàn bộ câu thoại để cho AI đọc một mạch
+    full_text = " ".join([scene["narration"] for scene in script_data["scenes"]])
+    
+    # Rút trích danh sách từ khóa theo đúng thứ tự kịch bản từng cảnh
+    scene_keywords = [scene["keyword"] for scene in script_data["scenes"]]
+    
+    script_path = os.path.join(working_dir, "script.txt")
+    with open(script_path, "w", encoding="utf-8") as f:
+        f.write(full_text)
+        
+    print("✅ Đã chốt xong kịch bản và từ khóa bám sát từng câu thoại!")
+
+   # [BƯỚC 2/4] TẠO GIỌNG ĐỌC VÀ PHỤ ĐỀ
+    print("\n🎙️ [Bước 2/4] Đang thuê 'Diễn viên lồng tiếng AI' thu âm và tạo phụ đề...")
+    
+    # SỬA Ở ĐÂY: Chỉ định rõ tên file 'audio.mp3' thay vì chỉ đưa thư mục gốc
+    audio_target = os.path.join(working_dir, "audio.mp3")
+    
+    # Truyền đường dẫn file cụ thể vào hàm gốc của bạn
+    audio_path, srt_path = create_tts_and_subtitles(full_text, audio_target)
+    
+    if not audio_path or not srt_path:
+        print("❌ Lỗi: Không thể khởi tạo giọng đọc hoặc phụ đề.")
+        return None
+
+    # [BƯỚC 3/4] TẢI VIDEO THEO TỪNG CÂU THOẠI
+    print("\n📥 [Bước 3/4] Đang tải video minh họa siêu sát nghĩa cho từng cảnh...")
+    downloaded_videos = []
+    
+    for idx, kw in enumerate(scene_keywords):
+        print(f"   🔍 Cảnh {idx + 1}: Tìm video cho từ khóa '{kw}'")
+        # Sử dụng đúng hàm download_video_from_keyword gốc từ modules.downloader
+        vp = download_video_from_keyword(keyword=kw, output_dir=working_dir)
+        
+        # Nếu từ khóa này không tìm thấy video, dùng từ khóa dự phòng an toàn
+        if not vp:
+            print(f"   ⚠️ Không tìm thấy, dùng video dự phòng 'mystery'...")
+            vp = download_video_from_keyword(keyword="mystery", output_dir=working_dir)
+            
+        if vp:
+            downloaded_videos.append(vp)
+            
+    if not downloaded_videos:
+        print("❌ Lỗi: Không tải được bất kỳ video nào.")
+        return None
+
+    # [BƯỚC 4/4] RENDER VIDEO
+    print("\n🎬 [Bước 4/4] Đang khởi động FFmpeg để xử lý kỹ xảo và xuất bản video...")
+    output_filename = f"{topic.replace(' ', '_')[:30]}_final.mp4"
+    output_filepath = os.path.join("outputs", output_filename)
     os.makedirs("outputs", exist_ok=True)
     
-    audio_path = os.path.join(working_dir, "audio.mp3")
-    srt_path = os.path.join(working_dir, "subtitles.srt")
-    final_video_path = os.path.join("outputs", f"final_shorts_{video_id}.mp4")
-
-    print("="*50)
-    print(f"🚀 KHỞI CHẠY PIPELINE TỰ ĐỘNG HÓA CHỦ ĐỀ: '{topic}'")
-    print("="*50)
-
-    try:
-        print("\n🧠 [Bước 1/4] Đang gửi yêu cầu cho Gemini sáng tạo nội dung...")
-        script_data = generate_script(topic)
-        if not script_data:
-            print("❌ Lỗi: Không thể khởi tạo kịch bản từ AI.")
-            return
-            
-        script_text = script_data.get("full_text")
-        keywords = script_data.get("visual_keywords", [])
-        print(f"📝 Kịch bản đã viết xong (Độ dài: {len(script_text)} ký tự).")
-
-        print("\n🎙️ [Bước 2/4] Đang chuyển đổi văn bản sang giọng nói và trích xuất phụ đề...")
-        audio_result, srt_result = create_tts_and_subtitles(text=script_text, audio_output=audio_path, sub_output=srt_path)
+    bgm_path = "bgm.mp3"
+    if not os.path.exists(bgm_path):
+        bgm_path = None
         
-        if not audio_result or not srt_result:
-            print("❌ DÂY CHUYỀN DỪNG LẠI: Module giọng đọc và phụ đề gặp sự cố!")
-            return
-            
-        print("🎵 Đã tạo xong file audio.mp3 và file subtitles.srt.")
-
-        print("\n📥 [Bước 3/4] Đang kích hoạt Bot lên Pexels săn tìm chuỗi video B-roll chuyển cảnh...")
-        downloaded_videos = []
-        for kw in keywords[:6]:
-            print(f"   🔍 Tìm video cho cảnh: '{kw}'")
-            vp = download_video_from_keyword(keyword=kw, output_dir=working_dir)
-            if vp and vp not in downloaded_videos:
-                downloaded_videos.append(vp)
-                
-        if not downloaded_videos:
-            print("⚠️ Không tìm thấy video đúng từ khóa, đang tải video vũ trụ/thiên nhiên dự phòng...")
-            downloaded_videos.append(download_video_from_keyword(keyword="universe", output_dir=working_dir))
-
-        print(f"📥 Đã tải thành công {len(downloaded_videos)} video B-roll.")
-
-        print("\n🎬 [Bước 4/4] Đang khởi động FFmpeg để xử lý kỹ xảo và xuất bản video...")
-        
-        # KIỂM TRA FILE NHẠC NỀN
-        bgm_file = "bgm.mp3"
-        bgm_path = bgm_file if os.path.exists(bgm_file) else None
-        
-        if bgm_path:
-            print("   🎧 Đã phát hiện nhạc nền, đang tiến hành trộn âm thanh (Audio Mixing)...")
-        else:
-            print("   ⚠️ Không tìm thấy file 'bgm.mp3' trong thư mục gốc, sẽ chỉ dùng giọng đọc AI.")
-
-        result_path = render_final_video(
-            video_paths=downloaded_videos, 
-            audio_path=audio_path,
-            srt_path=srt_path,
-            output_path=final_video_path,
-            bgm_path=bgm_path # Bơm đường dẫn nhạc nền vào hệ thống
-        )
-        
-        if result_path:
-            print("\n" + "="*50)
-            print(f"🎉 XUẤT BẢN THÀNH CÔNG! Video Shorts của bạn đã sẵn sàng tại:")
-            print(f"📁 {result_path}")
-            print("="*50)
-# DÒNG THÊM MỚI QUAN TRỌNG: Trả đường dẫn video về cho hệ thống Web
-            return result_path
-    except Exception as e:
-        print(f"\n❌ Hệ thống gặp sự cố nghiêm trọng tại dây chuyền: {str(e)}")
-    finally:
-        if os.path.exists(working_dir):
-            print("\n🧹 Đang dọn dẹp các file rác trong workspace...")
-            shutil.rmtree(working_dir)
+    # Sử dụng đúng hàm render_final_video gốc từ modules.video_editor
+    final_video = render_final_video(downloaded_videos, audio_path, srt_path, output_filepath, bgm_path)
+    
+    if final_video:
+        print(f"\n🎉 THÀNH CÔNG RỰC RỠ! Video đã ra lò tại: {final_video}")
+        return final_video
+    else:
+        print("\n❌ Thất bại ở khâu Render cuối cùng.")
+        return None
 
 if __name__ == "__main__":
-    user_topic = input("Nhập chủ đề video bạn muốn làm bằng tiếng Anh: ")
-    if user_topic.strip():
-        run_automated_shorts_pipeline(user_topic)
+    test_topic = "The terrifying scale of the blue whale"
+    run_automated_shorts_pipeline(test_topic)

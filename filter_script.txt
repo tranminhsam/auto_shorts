@@ -1,0 +1,8 @@
+[0:v]scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,setsar=1,fps=30[v0];
+[1:v]scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,setsar=1,fps=30[v1];
+[2:v]scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,setsar=1,fps=30[v2];
+[3:v]scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,setsar=1,fps=30[v3];
+[4:v]scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,setsar=1,fps=30[v4];
+[5:v]scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,setsar=1,fps=30[v5];
+[v0][v1][v2][v3][v4][v5]concat=n=6:v=1:a=0[concated];
+[concated]subtitles=filename='/Users/sam/project/auto_shorts/subtitles.srt':force_style='Fontname=Impact,Fontsize=14,PrimaryColour=&H0000FFFF&,OutlineColour=&H00000000&,BorderStyle=1,Outline=1.5,Alignment=2,MarginV=30'[final_v]
