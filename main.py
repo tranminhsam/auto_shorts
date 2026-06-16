@@ -92,6 +92,3 @@ def run_automated_shorts_pipeline(topic: str):
         print("\n❌ Thất bại ở khâu Render cuối cùng.")
         return None
 
-if __name__ == "__main__":
-    test_topic = "The terrifying scale of the blue whale"
-    run_automated_shorts_pipeline(test_topic)

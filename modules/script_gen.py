@@ -1,10 +1,11 @@
 import os
 import json
-import google.generativeai as genai
+import time
+from google import genai
+from google.genai import types
 from dotenv import load_dotenv
 
 load_dotenv()
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
 def generate_script(topic: str):
     prompt_instruction = f"""
@@ -53,14 +54,30 @@ def generate_script(topic: str):
     }}
     """
     
-    try:
-        model = genai.GenerativeModel(
-            'gemini-2.5-flash',
-            generation_config={"response_mime_type": "application/json"}
-        )
-        response = model.generate_content(prompt_instruction)
-        return json.loads(response.text)
+    max_retries = 3
+    # Khởi tạo Client theo chuẩn SDK mới của Google
+    client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+    
+    for attempt in range(max_retries):
+        try:
+            # Cú pháp gọi API thế hệ mới
+            response = client.models.generate_content(
+                model='gemini-1.5-flash',
+                contents=prompt_instruction,
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json"
+                )
+            )
+            return json.loads(response.text)
 
-    except Exception as e:
-        print(f"❌ Lỗi kết nối API Gemini: {str(e)}")
-        return None
+        except Exception as e:
+            error_message = str(e)
+            if "429" in error_message or "Quota" in error_message:
+                print(f"   ⏳ Google đang yêu cầu giảm tốc độ (Lỗi 429). Hệ thống tự động ngủ 30 giây... (Thử lại lần {attempt + 1}/{max_retries})")
+                time.sleep(30)
+            else:
+                print(f"❌ Lỗi kết nối API Gemini: {error_message}")
+                return None
+                
+    print("❌ Đã thử lại 3 lần nhưng API vẫn từ chối. Vui lòng kiểm tra lại API Key hoặc đổi Key mới.")
+    return None
