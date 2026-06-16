@@ -62,7 +62,7 @@ def generate_script(topic: str):
         try:
             # Cú pháp gọi API thế hệ mới
             response = client.models.generate_content(
-                model='gemini-1.5-flash',
+                model='gemini-2.5-flash',
                 contents=prompt_instruction,
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json"
